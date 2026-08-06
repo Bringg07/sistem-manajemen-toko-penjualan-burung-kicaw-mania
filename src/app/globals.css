@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+/* CSS Tambahan untuk Kicaw Mania */
+body {
+  background-color: rgb(249 250 251);
+  color: rgb(17 24 39);
+}
+
+.no-print {
+  @media print {
+    display: none;
+  }
+}
