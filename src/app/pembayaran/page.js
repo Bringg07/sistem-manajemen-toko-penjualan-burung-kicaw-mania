@@ -11,12 +11,14 @@ import {
   ArrowLeft,
   AlertCircle,
 } from 'lucide-react';
+import BirdImage from '@/component/BirdImage';
 
 export default function PembayaranPage() {
   const router = useRouter();
 
   const [items, setItems] = useState([]);
   const [alamat, setAlamat] = useState('');
+  const [alamatError, setAlamatError] = useState(false);
   const [metodePembayaran, setMetodePembayaran] = useState('Transfer Bank');
   const [verifying, setVerifying] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -42,12 +44,13 @@ export default function PembayaranPage() {
 
   async function handleBayar() {
     if (!alamat.trim()) {
-      alert('Alamat pengantaran wajib diisi.');
+      setAlamatError(true);
+      setError('Alamat pengantaran wajib diisi.');
       return;
     }
 
     if (items.length === 0) {
-      alert('Tidak ada item yang dibeli.');
+      setError('Tidak ada item yang dibeli.');
       return;
     }
 
@@ -238,11 +241,21 @@ export default function PembayaranPage() {
 
               <textarea
                 value={alamat}
-                onChange={(e) => setAlamat(e.target.value)}
+                onChange={(e) => {
+                  setAlamat(e.target.value);
+                  if (e.target.value.trim()) setAlamatError(false);
+                }}
                 rows={5}
                 placeholder="Masukkan alamat lengkap pengantaran..."
-                className="w-full border border-gray-200 rounded-2xl p-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full border rounded-2xl p-4 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
+                  alamatError ? 'border-red-400 bg-red-50' : 'border-gray-200'
+                }`}
               />
+              {alamatError && (
+                <p className="mt-2 text-sm font-medium text-red-600 flex items-center gap-1.5">
+                  <AlertCircle size={14} /> Alamat pengantaran wajib diisi.
+                </p>
+              )}
             </div>
 
             <div>
@@ -282,14 +295,16 @@ export default function PembayaranPage() {
             <div className="space-y-4 mb-6">
               {items.map((item) => (
                 <div key={item.id} className="flex gap-3">
-                  <img
-                    src={
-                      item.image_url ||
-                      'https://via.placeholder.com/100x100?text=No+Image'
-                    }
-                    alt={item.name}
-                    className="w-16 h-16 rounded-xl object-cover"
-                  />
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0 relative">
+                    <BirdImage
+                      src={item.image_url}
+                      alt={item.name}
+                      width={64}
+                      height={64}
+                      sizes="64px"
+                      className="object-cover"
+                    />
+                  </div>
 
                   <div className="flex-1">
                     <h3 className="font-bold text-gray-800">{item.name}</h3>

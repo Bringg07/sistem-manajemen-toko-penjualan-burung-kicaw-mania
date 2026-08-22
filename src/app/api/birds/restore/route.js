@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/apiAuth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY;
@@ -15,6 +16,11 @@ function getServerSupabase() {
 
 export async function POST(request) {
   try {
+    const admin = await requireAdmin();
+    if (!admin.ok) {
+      return new Response(JSON.stringify({ success: false, error: 'Akses ditolak: khusus admin.' }), { status: 403 });
+    }
+
     const body = await request.json();
     const id = body?.id;
     if (!id) return new Response(JSON.stringify({ error: 'Missing id' }), { status: 400 });

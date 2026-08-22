@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#e0f2fe"/>
+  <circle cx="200" cy="150" r="70" fill="#bae6fd"/>
+  <g transform="translate(140 90)">
+    <path d="M60 20 C40 20 25 35 25 55 L25 80 C25 100 40 115 60 115 L75 115 L95 135 L95 115 C110 110 120 95 120 78 L120 55 C120 35 105 20 85 20 Z" fill="#0284c7"/>
+    <circle cx="52" cy="52" r="6" fill="#fff"/>
+    <path d="M25 62 L5 68 L25 74 Z" fill="#ea580c"/>
+    <path d="M70 20 C72 8 82 4 92 6 C86 10 84 16 84 22 Z" fill="#0369a1"/>
+  </g>
+  <text x="200" y="245" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#0369a1" text-anchor="middle">Kicaw Mania</text>
+</svg>

@@ -18,6 +18,12 @@ export default function LoginPage() {
 
   useEffect(() => {
     setSupabase(createClientComponent());
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('registered') === '1') {
+        setSuccess('Pendaftaran berhasil! Silakan masuk.');
+      }
+    } catch {}
   }, []);
 
   async function handleLogin(e) {

@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
-export async function middleware(req) {
+// Next.js 16+: konvensi "proxy" menggantikan "middleware" (API identik)
+export async function proxy(req) {
   let res = NextResponse.next();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -20,11 +21,11 @@ export async function middleware(req) {
   );
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // 1. Jika sudah login dan mencoba buka halaman login/signup, arahkan ke /user (Katalog)
-  if (session && req.nextUrl.pathname.startsWith("/auth")) {
+  if (user && req.nextUrl.pathname.startsWith("/auth")) {
     return NextResponse.redirect(new URL("/user", req.url));
   }
 
@@ -35,14 +36,29 @@ export async function middleware(req) {
     "/profile",
     "/pembayaran",
     "/riwayat",
+    "/bird",
+    "/wishlist",
   ];
 
   const isProtectedPath = protectedPaths.some((path) =>
     req.nextUrl.pathname.startsWith(path),
   );
 
-  if (!session && isProtectedPath) {
+  if (!user && isProtectedPath) {
     return NextResponse.redirect(new URL("/auth/login", req.url));
+  }
+
+  // 3. KEAMANAN: Halaman /admin hanya boleh diakses user dengan role admin
+  if (user && req.nextUrl.pathname.startsWith("/admin")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (!profile || String(profile.role).toLowerCase() !== "admin") {
+      return NextResponse.redirect(new URL("/user", req.url));
+    }
   }
 
   return res;
@@ -56,5 +72,7 @@ export const config = {
     "/profile/:path*",
     "/pembayaran/:path*",
     "/riwayat/:path*",
+    "/bird/:path*",
+    "/wishlist/:path*",
   ],
 };

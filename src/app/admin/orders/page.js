@@ -7,6 +7,8 @@ import {
   RefreshCw, Eye, X, Package, Calendar, ChevronLeft, ChevronRight, User, Truck
 } from "lucide-react";
 import Link from "next/link";
+import BirdImage from "@/component/BirdImage";
+import { shortOrderId } from "@/lib/config";
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -29,20 +31,6 @@ export default function AdminOrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  // Mencegah scroll pada body saat modal terbuka
-  useEffect(() => {
-    if (showDetailModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [showDetailModal]);
-
   async function fetchOrders() {
     try {
       setLoading(true);
@@ -60,9 +48,32 @@ export default function AdminOrdersPage() {
     }
   }
 
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  // Mencegah scroll pada body saat modal terbuka
+  useEffect(() => {
+    if (showDetailModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [showDetailModal]);
+
+  // Tutup modal dengan Escape
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape") setShowDetailModal(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   async function handleStatusChange(orderId, newStatus) {
     try {
-      setUpdatingId(orderId); 
+      setUpdatingId(orderId);
       const res = await fetch('/api/admin/orders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -74,9 +85,11 @@ export default function AdminOrdersPage() {
         if (selectedOrder?.id === orderId) {
           setSelectedOrder(prev => ({ ...prev, payment_status: newStatus }));
         }
+      } else {
+        setError(data.error || "Gagal memperbarui status.");
       }
     } catch (err) {
-      alert("Gagal memperbarui status.");
+      setError("Gagal memperbarui status.");
     } finally {
       setUpdatingId(null);
     }
@@ -153,7 +166,7 @@ export default function AdminOrdersPage() {
               <div>
                 <h3 className="text-xl md:text-2xl font-black text-slate-900">Rincian Transaksi</h3>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-widest">ID: #{selectedOrder.id.substring(0, 12)}</span>
+                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-widest">ID: #{shortOrderId(selectedOrder.id)}</span>
                   <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase"><Calendar size={12}/> {new Date(selectedOrder.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                 </div>
               </div>
@@ -192,7 +205,9 @@ export default function AdminOrdersPage() {
                   {selectedOrder.purchase_items?.map((item) => (
                     <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 md:p-5 border border-slate-100 rounded-3xl bg-white shadow-sm">
                       <div className="flex items-center gap-4 flex-1">
-                        <img src={item.image_url} className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-2xl shadow-sm border border-slate-50" alt={item.bird_name} />
+                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden shadow-sm border border-slate-50 bg-slate-100 shrink-0 relative">
+                        <BirdImage src={item.image_url} alt={item.bird_name} width={80} height={80} sizes="80px" className="object-cover" />
+                      </div>
                         <div>
                           <p className="font-black text-slate-800 text-sm md:text-base">{item.bird_name}</p>
                           <p className="text-[10px] md:text-xs font-bold text-slate-400 mb-2">{item.bird_species}</p>
@@ -322,7 +337,7 @@ export default function AdminOrdersPage() {
                         </button>
                         <div>
                           <p className="text-xs font-mono font-bold text-blue-600 bg-blue-100/50 px-2 py-0.5 rounded-md inline-block">
-                            #{order.id.split('-')[0]}
+                            #{shortOrderId(order.id)}
                           </p>
                           <p className="text-[10px] font-bold text-slate-500 mt-1">
                             {new Date(order.created_at).toLocaleString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -370,7 +385,9 @@ export default function AdminOrdersPage() {
                       {firstItem ? (
                         <div className="flex items-center gap-3 mb-3">
                           {firstItem.image_url && (
-                             <img src={firstItem.image_url} alt={firstItem.bird_name} className="w-12 h-12 object-cover rounded-xl border border-slate-200 bg-white" />
+                             <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 bg-white shrink-0 relative">
+                               <BirdImage src={firstItem.image_url} alt={firstItem.bird_name} width={48} height={48} sizes="48px" className="object-cover" />
+                             </div>
                           )}
                           <div className="flex-1">
                             <h4 className="font-bold text-slate-800 text-sm leading-tight line-clamp-1">{firstItem.bird_name}</h4>

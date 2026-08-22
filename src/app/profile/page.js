@@ -169,7 +169,7 @@ export default function ProfilePage() {
               {history.length > 0 ? (
                 <div className="space-y-3">
                   {history.map((order) => (
-                    <div key={order.id} className="border border-gray-50 rounded-2xl p-4 flex justify-between items-center bg-gray-50/30 hover:border-blue-100 transition cursor-pointer" onClick={() => router.push(`/struk/${order.id}`)}>
+                    <Link key={order.id} href={`/struk/${order.id}`} className="border border-gray-50 rounded-2xl p-4 flex justify-between items-center bg-gray-50/30 hover:border-blue-100 transition cursor-pointer">
                       <div className="flex items-center gap-3">
                         <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
                           <Package size={18} />
@@ -183,7 +183,7 @@ export default function ProfilePage() {
                         <p className="font-black text-blue-600">Rp {order.total_price?.toLocaleString('id-ID')}</p>
                         <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-50 px-2 py-0.5 rounded-md">{order.payment_status}</span>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : (

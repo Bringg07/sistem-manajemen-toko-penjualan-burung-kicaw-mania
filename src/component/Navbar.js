@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClientComponent } from "@/lib/supabase";
-import { Bird, History, PackageSearch, Menu, X } from "lucide-react"; // Tambahkan Menu dan X
+import DarkModeToggle from "@/component/DarkModeToggle";
+import { Bird, History, PackageSearch, Menu, X, Heart } from "lucide-react"; // Tambahkan Menu dan X
 
 export default function Navbar() {
   const [profile, setProfile] = useState(null);
@@ -14,16 +15,27 @@ export default function Navbar() {
   const supabase = createClientComponent();
 
   // Memperketat pengecekan halaman agar tombol "Masuk" benar-benar hilang di halaman auth
-  const isAuthPage = 
-    pathname === "/auth/login" || 
-    pathname === "/auth/register" || 
-    pathname === "/auth/signup" || 
+  const isAuthPage =
+    pathname === "/auth/login" ||
+    pathname === "/auth/register" ||
+    pathname === "/auth/signup" ||
     pathname === "/";
 
   useEffect(() => {
-    async function getProfile() {
+    if (!supabase) return;
+
+    async function fetchPendingCount() {
+      const { count, error } = await supabase
+        .from("purchases")
+        .select("*", { count: "exact", head: true })
+        .eq("payment_status", "pending");
+
+      if (!error) setPendingCount(count || 0);
+    }
+
+    async function loadProfile() {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (user) {
         const { data } = await supabase
           .from("profiles")
@@ -32,25 +44,34 @@ export default function Navbar() {
           .single();
         setProfile(data);
 
+        // Admin: badge pesanan pending di-refresh periodik,
+        // bukan pada setiap pindah halaman.
         if (data?.role === "admin") {
           fetchPendingCount();
+          const interval = setInterval(fetchPendingCount, 60000);
+          return () => clearInterval(interval);
         }
       } else {
         setProfile(null);
       }
     }
 
-    async function fetchPendingCount() {
-      const { count, error } = await supabase
-        .from("purchases")
-        .select("*", { count: "exact", head: true })
-        .eq("payment_status", "pending");
-      
-      if (!error) setPendingCount(count || 0);
-    }
+    let cleanupInterval;
+    loadProfile().then((cleanup) => { cleanupInterval = cleanup; });
 
-    getProfile();
-  }, [supabase, pathname]);
+    // Muat ulang profil saat status auth berubah (login/logout), bukan saat navigasi.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+        setPendingCount(0);
+        loadProfile().then((cleanup) => { cleanupInterval = cleanup; });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      if (typeof cleanupInterval === "function") cleanupInterval();
+    };
+  }, [supabase]);
 
   // Tutup menu mobile otomatis setiap kali pindah halaman
   useEffect(() => {
@@ -64,16 +85,17 @@ export default function Navbar() {
     if (profile.role === "admin") {
       navLinks = [
         { name: "Katalog", href: "/user", icon: Bird },
-        { 
-          name: "Pesanan Masuk", 
-          href: "/admin/orders", 
-          icon: PackageSearch, 
-          badge: pendingCount 
+        {
+          name: "Pesanan Masuk",
+          href: "/admin/orders",
+          icon: PackageSearch,
+          badge: pendingCount
         },
       ];
     } else {
       navLinks = [
         { name: "Katalog", href: "/user", icon: Bird },
+        { name: "Favorit", href: "/wishlist", icon: Heart },
         { name: "Riwayat", href: "/riwayat", icon: History },
       ];
     }
@@ -83,7 +105,7 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          
+
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <div className="bg-blue-600 p-1.5 rounded-lg group-hover:rotate-12 transition-transform">
@@ -121,9 +143,11 @@ export default function Navbar() {
 
           {/* Profile Section & Mobile Toggle */}
           <div className="flex items-center gap-3 sm:gap-4">
+            <DarkModeToggle />
+
             {profile ? (
-              <Link 
-                href="/profile" 
+              <Link
+                href="/profile"
                 className="flex items-center gap-3 bg-gray-50 hover:bg-gray-100 px-2 sm:px-3 py-1.5 rounded-full sm:rounded-2xl border border-gray-100 transition shadow-sm"
               >
                 <div className="text-right hidden sm:block">
@@ -136,8 +160,8 @@ export default function Navbar() {
               </Link>
             ) : (
               !isAuthPage && (
-                <Link 
-                  href="/auth/login" 
+                <Link
+                  href="/auth/login"
                   className="text-sm font-bold text-white bg-blue-600 px-5 sm:px-6 py-2.5 rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-100"
                 >
                   Masuk
@@ -147,8 +171,9 @@ export default function Navbar() {
 
             {/* Tombol Hamburger Khusus Mobile */}
             {navLinks.length > 0 && (
-              <button 
+              <button
                 className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                aria-label={isMobileMenuOpen ? "Tutup menu" : "Buka menu"}
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -190,4 +215,4 @@ export default function Navbar() {
       )}
     </nav>
   );
-} 
+}

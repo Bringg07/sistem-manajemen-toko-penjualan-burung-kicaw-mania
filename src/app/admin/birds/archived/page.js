@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponent } from "@/lib/supabase";
 import Link from "next/link";
+import BirdImage from "@/component/BirdImage";
 import {
   ArrowLeft,
   RotateCcw,
@@ -165,14 +166,13 @@ export default function ArchivedBirdsPage() {
             >
               <div className="flex flex-col md:flex-row gap-6 items-start">
                 {/* Image */}
-                <div className="flex-shrink-0">
-                  <img
-                    src={
-                      bird.image_url ||
-                      "https://via.placeholder.com/200x150?text=No+Image"
-                    }
+                <div className="flex-shrink-0 w-40 h-32 rounded-xl overflow-hidden border border-gray-200 bg-gray-100 relative">
+                  <BirdImage
+                    src={bird.image_url}
                     alt={bird.name}
-                    className="w-40 h-32 object-cover rounded-xl border border-gray-200"
+                    fill
+                    sizes="160px"
+                    className="object-cover"
                   />
                 </div>
 

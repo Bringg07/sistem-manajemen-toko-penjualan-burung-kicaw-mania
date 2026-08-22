@@ -1,5 +1,5 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin } from '@/lib/apiAuth';
 
 export async function GET() {
   try {
@@ -27,9 +27,9 @@ export async function GET() {
 
 export async function POST(req) {
   try {
-    // 1. Proteksi Admin
-    const authCheck = await requireAdmin(req);
-    if (!authCheck?.user) {
+    // 1. Proteksi Admin (verifikasi cookie session, bukan header dari client)
+    const authCheck = await requireAdmin();
+    if (!authCheck.ok) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },

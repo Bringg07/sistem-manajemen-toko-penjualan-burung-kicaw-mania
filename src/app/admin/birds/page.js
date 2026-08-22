@@ -125,12 +125,12 @@ export default function AdminBirds() {
 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-bold text-gray-600">Harga (Rp)</label>
-            <input name="price" type="number" placeholder="0" className="border-2 p-3 rounded-xl focus:border-blue-500 outline-none" required />
+            <input name="price" type="number" min="0" step="1000" placeholder="0" className="border-2 p-3 rounded-xl focus:border-blue-500 outline-none" required />
           </div>
 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-bold text-gray-600">Stok</label>
-            <input name="stock" type="number" placeholder="0" className="border-2 p-3 rounded-xl focus:border-blue-500 outline-none" required />
+            <input name="stock" type="number" min="0" placeholder="0" className="border-2 p-3 rounded-xl focus:border-blue-500 outline-none" required />
           </div>
 
           <div className="flex flex-col gap-2 md:col-span-2">

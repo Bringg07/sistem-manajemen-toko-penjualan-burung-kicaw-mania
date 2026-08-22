@@ -1,5 +1,5 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin } from '@/lib/apiAuth';
 
 export async function GET(req, { params }) {
   try {
@@ -58,8 +58,8 @@ export async function PUT(req, { params }) {
       });
     }
 
-    const authCheck = await requireAdmin(req);
-    if (!authCheck?.user) {
+    const authCheck = await requireAdmin();
+    if (!authCheck.ok) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
@@ -115,8 +115,8 @@ export async function DELETE(req, { params }) {
       });
     }
 
-    const authCheck = await requireAdmin(req);
-    if (!authCheck?.user) {
+    const authCheck = await requireAdmin();
+    if (!authCheck.ok) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },

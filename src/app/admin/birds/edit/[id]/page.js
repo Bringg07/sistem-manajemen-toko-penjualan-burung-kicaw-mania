@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClientComponent } from '@/lib/supabase';
 import { ArrowLeft, Loader2, CheckCircle, Trash2, AlertTriangle, X } from 'lucide-react';
 import Link from 'next/link';
+import BirdImage from '@/component/BirdImage';
 import CategorySelect from '@/component/CategorySelect';
 
 export default function EditBirdPage() {
@@ -27,28 +28,46 @@ export default function EditBirdPage() {
   useEffect(() => {
     if (!mounted || !id) return;
     async function getBird() {
-      const [birdResult, categoriesResult] = await Promise.all([
-        supabase.from('birds').select('*').eq('id', id).single(),
-        fetch(`/api/bird-categories?bird_id=${id}`).then((res) => res.json()),
-      ]);
+      try {
+        const [birdResult, categoriesResult] = await Promise.all([
+          supabase.from('birds').select('*').eq('id', id).maybeSingle(),
+          fetch(`/api/bird-categories?bird_id=${id}`).then((res) => res.json()),
+        ]);
 
-      const categoriesData = await fetch('/api/categories').then((res) => res.json());
+        const categoriesData = await fetch('/api/categories').then((res) => res.json());
 
-      const { data } = birdResult;
-      if (data) setBirdData(data);
-      if (Array.isArray(categoriesResult)) {
-        const categoryIds = categoriesResult.map((item) => item.kategori_id);
-        setInitialCategories(categoryIds);
-        if (Array.isArray(categoriesData)) {
-          setSelectedCategoryDetails(
-            categoriesData.filter((category) => categoryIds.includes(category.id_categories))
-          );
+        const { data, error } = birdResult;
+        if (error || !data) {
+          setStatus({ type: 'error', message: 'Burung tidak ditemukan.' });
+        } else {
+          setBirdData(data);
         }
+        if (Array.isArray(categoriesResult)) {
+          const categoryIds = categoriesResult.map((item) => item.kategori_id);
+          setInitialCategories(categoryIds);
+          if (Array.isArray(categoriesData)) {
+            setSelectedCategoryDetails(
+              categoriesData.filter((category) => categoryIds.includes(category.id_categories))
+            );
+          }
+        }
+      } catch (err) {
+        setStatus({ type: 'error', message: err.message });
+      } finally {
+        setFetching(false);
       }
-      setFetching(false);
     }
     getBird();
   }, [id, mounted]);
+
+  // Tutup modal hapus dengan Escape
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape") setShowDeleteModal(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   async function handleUpdate(event) {
     event.preventDefault();
@@ -180,17 +199,21 @@ export default function EditBirdPage() {
         
         <div className="flex flex-col gap-2">
           <label className="font-bold text-gray-600 text-sm">Harga (Rp)</label>
-          <input name="price" type="number" defaultValue={birdData.price || 0} className="border-2 p-3 rounded-xl focus:border-blue-500 outline-none transition" required />
+          <input name="price" type="number" min="0" step="1000" defaultValue={birdData.price || 0} className="border-2 p-3 rounded-xl focus:border-blue-500 outline-none transition" required />
         </div>
-        
+
         <div className="flex flex-col gap-2">
           <label className="font-bold text-gray-600 text-sm">Stok</label>
-          <input name="stock" type="number" defaultValue={birdData.stock || 0} className="border-2 p-3 rounded-xl focus:border-blue-500 outline-none transition" required />
+          <input name="stock" type="number" min="0" defaultValue={birdData.stock || 0} className="border-2 p-3 rounded-xl focus:border-blue-500 outline-none transition" required />
         </div>
 
         <div className="flex flex-col gap-2 md:col-span-2">
           <label className="font-bold text-gray-600 text-sm">Pratinjau Foto</label>
-          {birdData.image_url && <img src={birdData.image_url} alt="old" className="w-28 h-28 object-cover rounded-2xl border mb-2" />}
+          {birdData.image_url && (
+            <div className="w-28 h-28 rounded-2xl overflow-hidden border bg-gray-100 relative mb-2">
+              <BirdImage src={birdData.image_url} alt={birdData.name} fill sizes="112px" className="object-cover" />
+            </div>
+          )}
           <input name="image_file" type="file" accept="image/*" className="border-2 border-dashed p-4 rounded-xl cursor-pointer hover:bg-gray-50 transition" />
         </div>
 

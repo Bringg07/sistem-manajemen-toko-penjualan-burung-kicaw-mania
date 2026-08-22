@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { USER_STATUS_TRANSITIONS, canTransition } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,12 +63,20 @@ export async function PATCH(request) {
     // Pastikan pesanan yang diubah benar-benar milik user tersebut
     const { data: orderData, error: orderError } = await supabase
       .from('purchases')
-      .select('user_id')
+      .select('user_id, payment_status')
       .eq('id', orderId)
       .single();
 
     if (orderError || orderData.user_id !== user.id) {
       return NextResponse.json({ success: false, error: 'Anda tidak berhak mengubah pesanan ini.' }, { status: 403 });
+    }
+
+    // Whitelist transisi: user hanya boleh menyelesaikan pesanan yang sudah dikirim
+    if (!canTransition(USER_STATUS_TRANSITIONS, orderData.payment_status, 'selesai')) {
+      return NextResponse.json(
+        { success: false, error: `Pesanan berstatus "${orderData.payment_status}" belum bisa diselesaikan.` },
+        { status: 400 }
+      );
     }
 
     // Update status menjadi selesai

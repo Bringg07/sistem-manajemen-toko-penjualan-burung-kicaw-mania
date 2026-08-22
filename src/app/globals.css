@@ -1,13 +1,46 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* CSS Tambahan untuk Kicaw Mania */
 body {
   background-color: rgb(249 250 251);
   color: rgb(17 24 39);
 }
 
+html.dark body {
+  background-color: rgb(15 23 42);
+  color: rgb(226 232 240);
+}
+
 .no-print {
   @media print {
     display: none;
   }
+}
+
+/* ===== DARK MODE GLOBAL OVERRIDES ===== */
+/* Menyesuaikan permukaan umum (kartu putih, teks abu) agar seluruh halaman ikut gelap
+   tanpa harus mengubah class di setiap file. */
+html.dark .bg-white { background-color: rgb(30 41 59); }
+html.dark .bg-gray-50 { background-color: rgb(15 23 42); }
+html.dark .bg-slate-50 { background-color: rgb(15 23 42); }
+html.dark .bg-gray-100 { background-color: rgb(51 65 85); }
+html.dark .bg-gray-200 { background-color: rgb(71 85 105); }
+html.dark .text-gray-900 { color: rgb(241 245 249); }
+html.dark .text-gray-800 { color: rgb(226 232 240); }
+html.dark .text-gray-700 { color: rgb(203 213 225); }
+html.dark .text-gray-600 { color: rgb(148 163 184); }
+html.dark .text-gray-500 { color: rgb(148 163 184); }
+html.dark .text-gray-400 { color: rgb(100 116 139); }
+html.dark .border-gray-100 { border-color: rgb(51 65 85); }
+html.dark .border-gray-200 { border-color: rgb(51 65 85); }
+html.dark .hover\:bg-gray-50:hover { background-color: rgb(51 65 85); }
+html.dark .hover\:bg-gray-100:hover { background-color: rgb(51 65 85); }
+html.dark .hover\:bg-gray-200:hover { background-color: rgb(71 85 105); }
+
+/* Animasi skeleton */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
 }

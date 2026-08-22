@@ -7,6 +7,8 @@ import {
   AlertTriangle, X, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight 
 } from "lucide-react";
 import Link from "next/link";
+import BirdImage from "@/component/BirdImage";
+import { shortOrderId } from "@/lib/config";
 
 export default function RiwayatPage() {
   const [orders, setOrders] = useState([]);
@@ -30,8 +32,35 @@ export default function RiwayatPage() {
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [finishingId, setFinishingId] = useState(null);
 
+  async function fetchMyOrders() {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/purchases'); 
+      const data = await res.json();
+      if (data.success) {
+        setOrders(data.purchases || []);
+        setError(null);
+      } else {
+        setError(data.error || "Gagal mengambil riwayat pesanan.");
+      }
+    } catch (err) {
+      setError("Terjadi kesalahan jaringan.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     fetchMyOrders();
+  }, []);
+
+  // Tutup modal dengan Escape
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape") setShowConfirmModal(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   useEffect(() => {
@@ -42,23 +71,6 @@ export default function RiwayatPage() {
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [showConfirmModal]);
-
-  async function fetchMyOrders() {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/purchases'); 
-      const data = await res.json();
-      if (data.success) {
-        setOrders(data.purchases || []);
-      } else {
-        setError(data.error || "Gagal mengambil riwayat pesanan.");
-      }
-    } catch (err) {
-      setError("Terjadi kesalahan jaringan.");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const toggleExpand = (orderId) => {
     setExpandedOrders(prev => ({
@@ -123,8 +135,13 @@ export default function RiwayatPage() {
       if (data.success) {
         setOrders(prev => prev.map(o => o.id === selectedOrderId ? { ...o, payment_status: 'selesai' } : o));
         setShowConfirmModal(false);
+      } else {
+        setError(data.error || "Gagal mengonfirmasi pesanan.");
+        setShowConfirmModal(false);
       }
-    } catch (err) { alert("Gagal mengonfirmasi pesanan."); } finally {
+    } catch (err) {
+      setError("Gagal mengonfirmasi pesanan.");
+    } finally {
       setFinishingId(null);
       setSelectedOrderId(null);
     }
@@ -173,6 +190,13 @@ export default function RiwayatPage() {
           </Link>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">Riwayat Pesanan Saya</h1>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-700 flex items-center gap-3 shadow-sm">
+            <AlertTriangle size={20} />
+            <p className="font-medium text-sm">{error}</p>
+          </div>
+        )}
 
         {/* CONTROLS: Dirapikan menjadi Grid di Mobile */}
         <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-gray-200 mb-8 flex flex-col gap-4">
@@ -225,12 +249,24 @@ export default function RiwayatPage() {
               <div key={order.id} className="bg-white rounded-[32px] shadow-sm border border-gray-200 overflow-hidden transition-all hover:border-blue-300 flex flex-col">
                 
                 {/* AREA YANG BISA DIKLIK UNTUK EXPAND (Header + Body) */}
-                <div className="cursor-pointer" onClick={() => toggleExpand(order.id)}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={!!isExpanded}
+                  className="cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  onClick={() => toggleExpand(order.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleExpand(order.id);
+                    }
+                  }}
+                >
                   <div className="p-6 pb-4 flex justify-between items-start">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">ORDER ID</span>
-                        <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">#{order.id.substring(0, 8)}</span>
+                        <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">#{shortOrderId(order.id)}</span>
                       </div>
                       <p className="text-sm font-semibold text-gray-500">{new Date(order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -242,7 +278,9 @@ export default function RiwayatPage() {
                   <div className="px-6 space-y-4">
                     {displayedItems.map((item) => (
                       <div key={item.id} className="flex items-center gap-4 py-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <img src={item.image_url} className="h-16 w-16 object-cover rounded-2xl border border-gray-100 shadow-sm" alt="" />
+                        <div className="h-16 w-16 rounded-2xl overflow-hidden bg-gray-100 shrink-0 relative">
+                          <BirdImage src={item.image_url} alt={item.bird_name} width={64} height={64} sizes="64px" className="object-cover" />
+                        </div>
                         <div className="flex-1">
                           <h4 className="font-bold text-gray-800 text-sm">{item.bird_name}</h4>
                           <p className="text-xs font-medium text-gray-400 italic mb-1">{item.bird_species}</p>

@@ -1,16 +1,24 @@
-'use server'
+'use server';
 
-import { supabase } from './supabase';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
+import { supabase } from './supabase';
+import { getAuthedUser } from './apiAuth';
 
 /**
  * AUTH: DAFTAR AKUN BARU
+ * Mengembalikan { success } atau { success: false, error }.
+ * Redirect dilakukan di client setelah sukses (bukan di dalam try/catch).
  */
 export async function handleSignup(formData) {
-  const username = formData.get('username');
-  const email = formData.get('email');
-  const password = formData.get('password');
+  const username = String(formData.get('username') || '').trim();
+  const email = String(formData.get('email') || '').trim();
+  const password = String(formData.get('password') || '');
+
+  if (!username) return { success: false, error: 'Username wajib diisi.' };
+  if (!email) return { success: false, error: 'Email wajib diisi.' };
+  if (password.length < 6) {
+    return { success: false, error: 'Password minimal 6 karakter.' };
+  }
 
   try {
     const { data, error } = await supabase.auth.signUp({
@@ -23,40 +31,36 @@ export async function handleSignup(formData) {
 
     if (error) throw error;
 
-    if (data?.user) {
-      const { error: profileError } = await supabase.from('profiles').upsert([
-        {
-          id: data.user.id,
-          username,
-          role: 'user',
-          avatar_url: null,
-        },
-      ]);
-
-      if (profileError) throw profileError;
-    }
+    // Profile sudah dibuat otomatis oleh trigger handle_new_user
+    // Tidak perlu upsert manual → hindari RLS conflict
 
     revalidatePath('/auth/signup');
-    redirect('/auth/login');
+    return { success: true };
   } catch (err) {
     console.error('handleSignup error:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message || 'Pendaftaran gagal.' };
   }
 }
 
 /**
  * AUTH: UPDATE PROFIL PENGGUNA
+ * userId diambil dari session terverifikasi, BUKAN dari form.
  */
 export async function updateProfile(formData) {
-  const userId = formData.get('userId');
-  const username = formData.get('username');
+  const username = String(formData.get('username') || '').trim();
   const avatarUrl = formData.get('avatar_url') || null;
 
+  if (!username) return { success: false, error: 'Username wajib diisi.' };
+
   try {
+    const { user, profile, supabase } = await getAuthedUser();
+    if (!user) return { success: false, error: 'Sesi berakhir, silakan login ulang.' };
+
+    // Role tidak boleh diubah lewat form; hanya username & avatar.
     const { error } = await supabase
       .from('profiles')
       .update({ username, avatar_url: avatarUrl })
-      .eq('id', userId);
+      .eq('id', profile?.id ?? user.id);
 
     if (error) throw error;
 
@@ -64,112 +68,7 @@ export async function updateProfile(formData) {
     revalidatePath('/user');
     return { success: true };
   } catch (err) {
-    return { success: false, error: err.message };
+    console.error('updateProfile error:', err);
+    return { success: false, error: err.message || 'Gagal menyimpan profil.' };
   }
-}
-
-/**
- * CREATE: TAMBAH BURUNG
- */
-export async function addBird(formData) {
-  const name = formData.get('name');
-  const species = formData.get('species');
-  const price = parseFloat(formData.get('price'));
-  const stock = parseInt(formData.get('stock'));
-  const imageFile = formData.get('image_file'); 
-
-  try {
-    let imageUrl = '';
-    if (imageFile && imageFile.size > 0) {
-      const fileName = `${Date.now()}-${imageFile.name.replace(/\s+/g, '-')}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('bird-images').upload(fileName, imageFile);
-      if (uploadError) throw new Error("Gagal upload: " + uploadError.message);
-      const { data: publicUrlData } = supabase.storage.from('bird-images').getPublicUrl(fileName);
-      imageUrl = publicUrlData.publicUrl;
-    }
-
-    const { error } = await supabase.from('birds').insert([
-      { name, species, price, stock, image_url: imageUrl, is_hidden: false }
-    ]);
-    if (error) throw error;
-    revalidatePath('/admin/birds');
-    revalidatePath('/');
-    return { success: true };
-  } catch (err) { return { success: false, error: err.message }; }
-}
-
-/**
- * UPDATE: EDIT DATA BURUNG
- */
-export async function updateBird(id, formData) {
-  const name = formData.get('name');
-  const species = formData.get('species');
-  const price = parseFloat(formData.get('price'));
-  const stock = parseInt(formData.get('stock'));
-  const imageFile = formData.get('image_file');
-  const oldImageUrl = formData.get('old_image_url');
-  const isHidden = formData.get('is_hidden') === 'on'; // Checkbox mengembalikan 'on' jika dicentang
-
-  try {
-    let imageUrl = oldImageUrl;
-    if (imageFile && imageFile.size > 0) {
-      const fileName = `${Date.now()}-${imageFile.name.replace(/\s+/g, '-')}`;
-      await supabase.storage.from('bird-images').upload(fileName, imageFile);
-      const { data } = supabase.storage.from('bird-images').getPublicUrl(fileName);
-      imageUrl = data.publicUrl;
-    }
-
-    const { error } = await supabase.from('birds')
-      .update({ name, species, price, stock, image_url: imageUrl, is_hidden: isHidden })
-      .eq('id', id);
-
-    if (error) throw error;
-    revalidatePath('/admin/birds');
-    revalidatePath('/');
-    return { success: true };
-  } catch (err) { return { success: false, error: err.message }; }
-}
-
-/**
- * DELETE: HAPUS BURUNG
- */
-export async function deleteBird(id) {
-  try {
-    // By default perform a soft delete (set deleted_at). To hard delete, pass an object { id, hard: true }
-    if (typeof id === 'object' && id !== null) {
-      const { id: realId, hard } = id;
-      if (hard) {
-        const { error } = await supabase.from('birds').delete().eq('id', realId);
-        if (error) throw error;
-        revalidatePath('/admin/birds');
-        revalidatePath('/');
-        return { success: true };
-      }
-      id = realId;
-    }
-
-    const deletedAt = new Date().toISOString();
-    const { error } = await supabase.from('birds').update({ deleted_at: deletedAt }).eq('id', id);
-    if (error) throw error;
-    revalidatePath('/admin/birds');
-    revalidatePath('/');
-    return { success: true };
-  } catch (err) { return { success: false, error: err.message }; }
-}
-
-/**
- * TOGGLE HIDE: SEMBUNYIKAN/TAMPILKAN CEPAT
- */
-export async function toggleHideBird(id, currentStatus) {
-  try {
-    const { error } = await supabase.from('birds')
-      .update({ is_hidden: !currentStatus })
-      .eq('id', id);
-    if (error) throw error;
-    revalidatePath('/admin/birds');
-    revalidatePath('/');
-    return { success: true };
-  } catch (err) { return { success: false, error: err.message }; }
-  
 }

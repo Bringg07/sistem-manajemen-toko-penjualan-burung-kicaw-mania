@@ -1,5 +1,11 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin } from '@/lib/apiAuth';
+
+const json = (data, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 
 export async function GET(req) {
   try {
@@ -14,36 +20,22 @@ export async function GET(req) {
     const { data, error } = await query;
     if (error) throw error;
 
-    return new Response(JSON.stringify(data || []), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json(data || []);
   } catch (err) {
     console.error('[GET /api/bird-categories]', err);
-    return new Response(JSON.stringify([]), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json([]);
   }
 }
 
 export async function POST(req) {
   try {
-    const authCheck = await requireAdmin(req);
-    if (!authCheck?.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return json({ error: 'Akses ditolak: khusus admin.' }, 403);
 
     const body = await req.json();
     const { bird_id, kategori_id } = body;
     if (!bird_id || !kategori_id) {
-      return new Response(JSON.stringify({ error: 'bird_id and kategori_id required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return json({ error: 'bird_id and kategori_id required' }, 400);
     }
 
     const { data, error } = await supabase
@@ -51,43 +43,22 @@ export async function POST(req) {
       .insert([{ bird_id, kategori_id }]);
     if (error) throw error;
 
-    return new Response(JSON.stringify(data), {
-      status: 201,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json(data, 201);
   } catch (err) {
-    if (err.status === 403) {
-      return new Response(JSON.stringify({ error: 'Forbidden: admin only' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
     console.error('[POST /api/bird-categories]', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json({ error: err.message }, 500);
   }
 }
 
 export async function DELETE(req) {
   try {
-    const authCheck = await requireAdmin(req);
-    if (!authCheck?.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return json({ error: 'Akses ditolak: khusus admin.' }, 403);
 
     const body = await req.json();
     const { bird_id, kategori_id } = body;
     if (!bird_id || !kategori_id) {
-      return new Response(JSON.stringify({ error: 'bird_id and kategori_id required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return json({ error: 'bird_id and kategori_id required' }, 400);
     }
 
     const { error } = await supabase
@@ -96,22 +67,9 @@ export async function DELETE(req) {
       .match({ bird_id, kategori_id });
     if (error) throw error;
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json({ success: true });
   } catch (err) {
-    if (err.status === 403) {
-      return new Response(JSON.stringify({ error: 'Forbidden: admin only' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
     console.error('[DELETE /api/bird-categories]', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json({ error: err.message }, 500);
   }
 }
